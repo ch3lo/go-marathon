@@ -466,9 +466,15 @@ func TestWaitOnApplication(t *testing.T) {
 	err = endpoint.Client.WaitOnApplication(fakeAppName, 1*time.Second)
 	assert.NoError(t, err)
 
-	err = endpoint.Client.WaitOnApplication("no_such_app", 1*time.Millisecond)
+	err = nil
+	go func() {
+		err = endpoint.Client.WaitOnApplication("no_such_app", 1*time.Second)
+	}()
+	timer := time.NewTimer(1200*time.Millisecond)
+	<- timer.C
 	assert.IsType(t, err, ErrTimeoutError)
 }
+
 func TestAppExistAndRunning(t *testing.T) {
 	endpoint := newFakeMarathonEndpoint(t, nil)
 	defer endpoint.Close()
