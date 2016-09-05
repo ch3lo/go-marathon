@@ -47,8 +47,8 @@ type Config struct {
 	LogOutput io.Writer
 	// HTTPClient is the http client
 	HTTPClient *http.Client
-	// WaitTime time in milliseconds
-	WaitTime int
+	// wait time (in milliseconds) between repetitive requests to the API during polling
+	PollingWaitTime int
 }
 
 // NewDefaultConfig create a default client config
@@ -59,6 +59,6 @@ func NewDefaultConfig() Config {
 		EventsPort:      10001,
 		EventsInterface: "eth0",
 		LogOutput:       ioutil.Discard,
-		WaitTime:        500,
+		PollingWaitTime: 500,
 	}
 }

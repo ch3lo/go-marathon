@@ -458,58 +458,58 @@ func TestApplicationConfiguration(t *testing.T) {
 	assert.Equal(t, ErrCodeNotFound, apiErr.ErrCode)
 }
 
-func TestWaitOnApplicationWithTimeoutGreaterThanTicker(t *testing.T) {
-	defaultConfig := NewDefaultConfig()
-	configs := &configContainer{}
-	configs.client = &defaultConfig
-	configs.client.WaitTime = 100
+func TestWaitOnApplication(t *testing.T) {
+	waitTime := 100
 
-	endpoint := newFakeMarathonEndpoint(t, configs)
-	defer endpoint.Close()
+	tests := []struct {
+		desc    string
+		timeout time.Duration
+		appName string
+	}{
+		{
+			desc:    "existing app / timeout > ticker",
+			timeout: 200 * time.Millisecond,
+			appName: fakeAppName,
+		},
+		{
+			desc:    "missing app / timeout > ticker",
+			timeout: 200 * time.Millisecond,
+			appName: "no_such_app",
+		},
+		{
+			desc:    "existing app / timeout < ticker",
+			timeout: 50 * time.Millisecond,
+			appName: fakeAppName,
+		},
+		{
+			desc:    "missing app / timeout < ticker",
+			timeout: 50 * time.Millisecond,
+			appName: "no_such_app",
+		},
+	}
 
-	var err error
-	go func() {
-		err = endpoint.Client.WaitOnApplication(fakeAppName, 200*time.Millisecond)
-	}()
-	timer := time.NewTimer(500*time.Millisecond)
-	<- timer.C
-	assert.NoError(t, err)
+	for _, test := range tests {
+		defaultConfig := NewDefaultConfig()
+		defaultConfig.PollingWaitTime = waitTime
+		configs := &configContainer{
+			client: &defaultConfig,
+		}
 
+		endpoint := newFakeMarathonEndpoint(t, configs)
+		defer endpoint.Close()
 
-	err = nil
-	go func() {
-		err = endpoint.Client.WaitOnApplication("no_such_app", 200*time.Millisecond)
-	}()
-	timer = time.NewTimer(500*time.Millisecond)
-	<- timer.C
-	assert.IsType(t, err, ErrTimeoutError)
-}
-
-func TestWaitOnApplicationWithTimeoutSmallerThanTicker(t *testing.T) {
-	defaultConfig := NewDefaultConfig()
-	configs := &configContainer{}
-	configs.client = &defaultConfig
-	configs.client.WaitTime = 200
-
-	endpoint := newFakeMarathonEndpoint(t, nil)
-	defer endpoint.Close()
-
-	var err error
-	go func() {
-		err = endpoint.Client.WaitOnApplication(fakeAppName, 100*time.Millisecond)
-	}()
-	timer := time.NewTimer(500*time.Millisecond)
-	<- timer.C
-	assert.NoError(t, err)
-
-
-	err = nil
-	go func() {
-		err = endpoint.Client.WaitOnApplication("no_such_app", 100*time.Millisecond)
-	}()
-	timer = time.NewTimer(500*time.Millisecond)
-	<- timer.C
-	assert.IsType(t, err, ErrTimeoutError)
+		var err error
+		go func() {
+			err = endpoint.Client.WaitOnApplication(test.appName, test.timeout)
+		}()
+		timer := time.NewTimer(400 * time.Millisecond)
+		<-timer.C
+		if test.appName == fakeAppName {
+			assert.NoError(t, err, test.desc)
+		} else {
+			assert.IsType(t, err, ErrTimeoutError, test.desc)
+		}
+	}
 }
 
 func TestAppExistAndRunning(t *testing.T) {
