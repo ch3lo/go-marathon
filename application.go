@@ -615,12 +615,13 @@ func (r *marathonClient) WaitOnApplication(name string, timeout time.Duration) e
 		return nil
 	}
 
+	timeoutTimer := time.After(timeout)
 	ticker := time.NewTicker(time.Millisecond * 500)
 	defer ticker.Stop()
 
 	for {
 		select {
-		case <-time.After(timeout):
+		case <-timeoutTimer:
 			return ErrTimeoutError
 		case <-ticker.C:
 			if r.appExistAndRunning(name) {
