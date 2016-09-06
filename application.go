@@ -616,7 +616,7 @@ func (r *marathonClient) WaitOnApplication(name string, timeout time.Duration) e
 	}
 
 	timeoutTimer := time.After(timeout)
-	ticker := time.NewTicker(time.Millisecond * 500)
+	ticker := time.NewTicker(r.waitTime)
 	defer ticker.Stop()
 
 	for {

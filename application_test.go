@@ -458,19 +458,56 @@ func TestApplicationConfiguration(t *testing.T) {
 	assert.Equal(t, ErrCodeNotFound, apiErr.ErrCode)
 }
 
-func TestWaitOnApplication(t *testing.T) {
+func TestWaitOnApplicationWithTimeoutGreaterThanTicker(t *testing.T) {
+	defaultConfig := NewDefaultConfig()
+	configs := &configContainer{}
+	configs.client = &defaultConfig
+	configs.client.WaitTime = 100
+
+	endpoint := newFakeMarathonEndpoint(t, configs)
+	defer endpoint.Close()
+
+	var err error
+	go func() {
+		err = endpoint.Client.WaitOnApplication(fakeAppName, 200*time.Millisecond)
+	}()
+	timer := time.NewTimer(500*time.Millisecond)
+	<- timer.C
+	assert.NoError(t, err)
+
+
+	err = nil
+	go func() {
+		err = endpoint.Client.WaitOnApplication("no_such_app", 200*time.Millisecond)
+	}()
+	timer = time.NewTimer(500*time.Millisecond)
+	<- timer.C
+	assert.IsType(t, err, ErrTimeoutError)
+}
+
+func TestWaitOnApplicationWithTimeoutSmallerThanTicker(t *testing.T) {
+	defaultConfig := NewDefaultConfig()
+	configs := &configContainer{}
+	configs.client = &defaultConfig
+	configs.client.WaitTime = 200
+
 	endpoint := newFakeMarathonEndpoint(t, nil)
 	defer endpoint.Close()
 
 	var err error
-	err = endpoint.Client.WaitOnApplication(fakeAppName, 1*time.Second)
+	go func() {
+		err = endpoint.Client.WaitOnApplication(fakeAppName, 100*time.Millisecond)
+	}()
+	timer := time.NewTimer(500*time.Millisecond)
+	<- timer.C
 	assert.NoError(t, err)
+
 
 	err = nil
 	go func() {
-		err = endpoint.Client.WaitOnApplication("no_such_app", 1*time.Second)
+		err = endpoint.Client.WaitOnApplication("no_such_app", 100*time.Millisecond)
 	}()
-	timer := time.NewTimer(1200*time.Millisecond)
+	timer = time.NewTimer(500*time.Millisecond)
 	<- timer.C
 	assert.IsType(t, err, ErrTimeoutError)
 }
